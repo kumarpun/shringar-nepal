@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/components/Footer";
 
@@ -18,10 +19,13 @@ function ProductCard({ product }) {
     <Link href={`/products/${product.id}`} className="group">
       <div className="rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow">
         {firstImage ? (
-          <img
+          <Image
             src={firstImage}
             alt={product.name}
+            width={400}
+            height={288}
             className="w-full h-72 object-cover"
+            loading="lazy"
           />
         ) : (
           <div className="w-full h-72 bg-zinc-100 flex items-center justify-center">
@@ -67,7 +71,7 @@ export default function Home() {
       <Navbar />
       {/* Hero */}
       <div className="relative h-[40vh] sm:h-[50vh] overflow-hidden">
-        <img src="/hero.jpg" alt="Shringar Nepal" className="absolute inset-0 w-full h-full object-cover" />
+        <Image src="/hero.jpg" alt="Shringar Nepal" fill className="object-cover" priority />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/20" />
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center px-4">

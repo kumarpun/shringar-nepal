@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/components/Footer";
 
@@ -156,7 +157,7 @@ function ShopContent() {
                       <Link key={product.id} href={`/products/${product.id}`} className="group">
                         <div className="rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow">
                           {firstImage ? (
-                            <img src={firstImage} alt={product.name} className="w-full h-72 object-cover" />
+                            <Image src={firstImage} alt={product.name} width={400} height={288} className="w-full h-72 object-cover" loading="lazy" />
                           ) : (
                             <div className="w-full h-72 bg-zinc-100 flex items-center justify-center">
                               <span className="text-zinc-400 text-sm">No image</span>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { addToCart } from "@/lib/cart";
 import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/components/Footer";
@@ -95,13 +96,13 @@ export default function ProductDetailPage() {
                     {productImages.map((img, index) => (
                       <button key={index} onClick={() => setMainImageIndex(index)}
                         className={`w-14 h-14 sm:w-16 sm:h-16 rounded-md overflow-hidden border-2 transition-colors ${mainImageIndex === index ? "border-zinc-700" : "border-zinc-200 hover:border-zinc-400"}`}>
-                        <img src={img} alt={`${product.name} ${index + 1}`} className="w-full h-full object-cover" />
+                        <Image src={img} alt={`${product.name} ${index + 1}`} width={64} height={64} className="w-full h-full object-cover" />
                       </button>
                     ))}
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <img src={productImages[mainImageIndex]} alt={product.name} className="w-full rounded-lg shadow-md object-cover" />
+                  <Image src={productImages[mainImageIndex]} alt={product.name} width={600} height={600} className="w-full rounded-lg shadow-md object-cover" priority />
                 </div>
               </div>
             ) : (
@@ -166,7 +167,7 @@ export default function ProductDetailPage() {
                 <Link key={rp.id} href={`/products/${rp.id}`} className="group">
                   <div className="rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow">
                     {firstImage ? (
-                      <img src={firstImage} alt={rp.name} className="w-full h-56 object-cover" />
+                      <Image src={firstImage} alt={rp.name} width={300} height={224} className="w-full h-56 object-cover" loading="lazy" />
                     ) : (
                       <div className="w-full h-56 bg-zinc-100 flex items-center justify-center">
                         <span className="text-zinc-400 text-sm">No image</span>
