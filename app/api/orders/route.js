@@ -1,0 +1,140 @@
+import { getConnection } from "@/lib/db";
+import Product from "@/models/Product";
+import Order from "@/models/Order";
+import OrderItem from "@/models/OrderItem";
+import Setting from "@/models/Setting";
+import User from "@/models/User";
+import { requireAuth } from "@/lib/auth";
+
+export async function GET(request) {
+  try {
+    const { user, error } = requireAuth(request);
+    if (error) return error;
+
+    await Order.sync();
+    const orders = await Order.findAll({ userId: user.id });
+
+    return Response.json({ success: true, orders });
+  } catch (error) {
+    return Response.json(
+      { success: false, message: "Failed to fetch orders", error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request) {
+  try {
+    const { user, error } = requireAuth(request);
+    if (error) return error;
+
+    await Product.sync();
+    await Order.sync();
+    await OrderItem.sync();
+
+    const { items, shippingName, shippingPhone, shippingAddress, shippingCity, shippingState, shippingZip, paymentMethod, deliveryCharge: clientDeliveryCharge } =
+      await request.json();
+
+    if (!items || items.length === 0) {
+      return Response.json(
+        { success: false, message: "Order must contain at least one item" },
+        { status: 400 }
+      );
+    }
+
+    if (!shippingName || !shippingPhone || !shippingAddress || !shippingCity) {
+      return Response.json(
+        { success: false, message: "Name, phone, address, and city are required" },
+        { status: 400 }
+      );
+    }
+
+    let total = 0;
+    const validatedItems = [];
+
+    for (const item of items) {
+      const product = await Product.findById(item.productId);
+
+      if (!product || !product.isActive) {
+        return Response.json(
+          { success: false, message: `Product not found: ${item.productId}` },
+          { status: 400 }
+        );
+      }
+
+      if (product.stock < item.quantity) {
+        return Response.json(
+          { success: false, message: `Insufficient stock for ${product.name}` },
+          { status: 400 }
+        );
+      }
+
+      const lineTotal = Number(product.price) * item.quantity;
+      total += lineTotal;
+
+      validatedItems.push({
+        productId: product.id,
+        quantity: item.quantity,
+        price: product.price,
+      });
+    }
+
+    let deliveryCharge;
+    if (clientDeliveryCharge != null) {
+      deliveryCharge = Number(clientDeliveryCharge);
+    } else {
+      const deliveryChargeSetting = await Setting.findOne({ settingKey: "deliveryCharge" });
+      deliveryCharge = deliveryChargeSetting ? Number(deliveryChargeSetting.value) : 0;
+    }
+    const grandTotal = total + deliveryCharge;
+
+    const connection = await getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const [orderResult] = await connection.execute(
+        `INSERT INTO orders (userId, status, total, deliveryCharge, shippingName, shippingPhone, shippingAddress, shippingCity, shippingState, shippingZip, paymentMethod)
+         VALUES (?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [user.id, grandTotal.toFixed(2), deliveryCharge.toFixed(2), shippingName, shippingPhone, shippingAddress, shippingCity, shippingState || null, shippingZip || null, paymentMethod || "cod"]
+      );
+      const orderId = orderResult.insertId;
+
+      for (const item of validatedItems) {
+        await connection.execute(
+          `INSERT INTO order_items (orderId, productId, quantity, price) VALUES (?, ?, ?, ?)`,
+          [orderId, item.productId, item.quantity, item.price]
+        );
+
+        await connection.execute(
+          `UPDATE products SET stock = stock - ? WHERE id = ?`,
+          [item.quantity, item.productId]
+        );
+      }
+
+      await connection.commit();
+
+      User.update(user.id, {
+        phone: shippingPhone || null,
+        address: shippingAddress || null,
+        city: shippingCity || null,
+        state: shippingState || null,
+        zip: shippingZip || null,
+      }).catch(() => {});
+
+      return Response.json(
+        { success: true, message: "Order placed successfully", orderId },
+        { status: 201 }
+      );
+    } catch (txError) {
+      await connection.rollback();
+      throw txError;
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    return Response.json(
+      { success: false, message: "Failed to place order", error: error.message },
+      { status: 500 }
+    );
+  }
+}
