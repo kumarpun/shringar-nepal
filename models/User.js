@@ -38,6 +38,14 @@ const userSchema = {
     type: "VARCHAR(20)",
     default: null,
   },
+  resetToken: {
+    type: "VARCHAR(255)",
+    default: null,
+  },
+  resetTokenExpiry: {
+    type: "DATETIME",
+    default: null,
+  },
 };
 
 const User = new Model("users", userSchema);
